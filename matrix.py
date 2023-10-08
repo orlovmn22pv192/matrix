@@ -13,7 +13,7 @@ def benchmark(func):
         return return_value
     return wrapper
 
-class ElementaryЕransformationsMixin:
+class ElementaryTransformationsMixin:
     def swap_rows(self, first:int, second:int) -> None:
         self._elements[first], self._elements[second] = self._elements[second], self._elements[first]
     
@@ -36,6 +36,11 @@ class ElementaryЕransformationsMixin:
     def sum_columns(self, source_column:int, target_column:int) -> None:
         for i in range(self.row):
             self._elements[i][target_column] += self._elements[i][source_column]
+    
+    def sum_num(self, num):
+        for i in range(self.row):
+            for j in range(self.column):
+                self._elements[i][j] += num
 
 # Метод Гаусса
 class GaussMethodMixin:
@@ -76,7 +81,6 @@ class GaussMethodMixin:
     
     def get_triangle(self):
         matr = self.copy()
-        matr.to_fractions()
         count_swap = 0
         
         for i in range(matr.row):
@@ -97,7 +101,39 @@ class GaussMethodMixin:
         return matr, count_swap
 
 
-class Matrix(GaussMethodMixin, ElementaryЕransformationsMixin):
+class GrevilleMethod:
+    def is_zeros_matr(self):
+        for i in range(self.row):
+            for j in range(self.column):
+                if self._elements[i][j] != 0:
+                    return False
+        return True
+    
+    def get_pseudoinverse_matrix(self):
+        list_A = []
+        k = 0
+        while k < self.column:
+            a_k = self.get_column(k, 1)
+            k += 1
+            if k == 1:
+                a_kT = a_k.T
+                list_A.append(((a_kT * a_k) ** -1) * a_kT)
+            else:
+                d_k = list_A[-1] * a_k
+                c_k = a_k - (self.get_column(range(k-1), k-1) * d_k)
+                if c_k.is_zeros_matr():
+                    temp_d = d_k.T * d_k
+                    temp_d.sum_num(1)
+                    b_k = temp_d ** -1 * d_k.T * list_A[-1]
+                else:
+                    b_k = (c_k.T * c_k) ** -1 * c_k.T
+                B = list_A[-1] - d_k * b_k
+                B.add_row(b_k)
+                list_A.append(B)
+        return list_A[-1]
+
+
+class Matrix(GrevilleMethod, GaussMethodMixin, ElementaryTransformationsMixin):
     def __init__(self, row:int, column:int, elements:list|None = None) -> None:
         self._row = row
         self._column = column
@@ -109,6 +145,7 @@ class Matrix(GaussMethodMixin, ElementaryЕransformationsMixin):
                 for _ in range(column):
                     self._elements[i].append(elements[index])
                     index += 1
+        self.to_fractions()
             
     @property
     def row(matrix) -> int:
@@ -127,6 +164,7 @@ class Matrix(GaussMethodMixin, ElementaryЕransformationsMixin):
     @benchmark     
     def rank(self) -> int:
         triangle_matr, _ = self.get_triangle()
+        print(triangle_matr)
         rank = 0
         for i in range(self.row):
             if triangle_matr._elements[i][i] != 0 or not triangle_matr._is_zeros(triangle_matr._elements[i]):
@@ -138,39 +176,79 @@ class Matrix(GaussMethodMixin, ElementaryЕransformationsMixin):
         matr._elements = [row.copy() for row in self._elements]
         return matr
 
+    def get_column(self, columns, num_columns):
+        temp = []
+        if isinstance(columns, int):
+            for row in range(self.row):
+                temp.append(self._elements[row][columns])
+        else:
+            for row in range(self.row):
+                for c in columns:
+                    temp.append(self._elements[row][c])
+        return Matrix(self.row, num_columns, temp)
+    
+    def add_row(self, row):
+        self._row += 1
+        self._elements.append(row._elements[0])
+    
+    @property
+    def T(self):
+        temp = []
+        for i in range(self.column):
+            for j in range(self.row):
+                temp.append(self._elements[j][i])
+        return Matrix(self.column, self.row, temp)
+        
+    def __mul__(self, matr):
+        if self.column != matr.row:
+            raise Exception('column != row')
+        temp = []
+        for i in range(self.row):
+            for j in range(matr.column):
+                el = 0
+                for k in range(self.column):
+                    el += self._elements[i][k] * matr._elements[k][j]
+                temp.append(el)
+        return Matrix(self.row, matr.column, temp)
+    
+    def __sub__(self, a):
+        if self.row != a.row or self.column != a.column:
+            return None
+        temp = []
+        for i in range(self.row):
+            for j in range(self.column):
+                temp.append(self._elements[i][j] - a._elements[i][j])
+        return Matrix(self.row, self.column, temp)
+    
+    def __pow__(self, a):
+        temp = []
+        for i in range(self.row):
+            for j in range(self.column):
+                temp.append(self._elements[i][j] ** a)
+        return Matrix(self.row, self.column, temp)
+    
     def __str__(self) -> str:
         return '\n'.join(' | '.join(map(str, row)) for row in self._elements)  
                     
 
 # rank 2
-test1 = (3,3,[1,2,3,4,5,6,7,8,9]) 
-# rank 3
-test2 = (3,3,[2,1,-1,-3,-1,2,-2,1,2])
-# rank 4
-test3 = (4,4,[1,2,3,14,2,3,4,15,3,4,51,6,4,5,16,7])
-# rank 5
-test4 = (5,5,[1,20,3,4,51,34,3,56,-2,3,43,0,1,67,78,1,34,56,87,12,11,22,33,44,55])
+test1 = (4,3,[1, -1, 0,
+              -1, 2, 1,
+              2, -3, -1,
+              0, 1, 1])
 
-tests = zip([test1, test2, test3, test4], [2,3,4,5])
 
-for test, answer in tests:
-    print('res=', Matrix(*test).rank(), ' answer=', answer)
+test2 = (3, 4, [1, -1, 2, 0,
+                -1, 2, -3, 1, 
+                0, 1, -1, 1])
 
-@benchmark
-def test_np(matr) -> int:
-    m = np.array(matr)    
-    rank = np.linalg.matrix_rank(m)
-    return rank
+test3 = (2,3,[1, -1, 0,
+              -1, 2, 1]) 
 
-n = 100
-m = 100
-    
-huge_matrix = [[random.randint(1,100) for _ in range(m)] for _ in range(n)]
-print('Numpy:')
-print('rank = ', test_np(huge_matrix))
-m = Matrix(n,m)
-m._elements = huge_matrix
-print('Gauss method:')
-print('rank = ',m.rank())
+m1 = Matrix(*test3)
+
+inv = m1.get_pseudoinverse_matrix()
+
+print(inv)
 
 
