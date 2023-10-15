@@ -84,6 +84,8 @@ class GaussMethodMixin:
         count_swap = 0
         
         for i in range(matr.row):
+            if i == matr.column:
+                continue
             if matr._elements[i][i] == 0:
                 count_swap += matr._set_max_el_in_row(i, count_swap)
             
@@ -145,7 +147,8 @@ class Matrix(GrevilleMethod, GaussMethodMixin, ElementaryTransformationsMixin):
                 for _ in range(column):
                     self._elements[i].append(elements[index])
                     index += 1
-        self.to_fractions()
+                    
+            self.to_fractions()
             
     @property
     def row(matrix) -> int:
@@ -191,6 +194,20 @@ class Matrix(GrevilleMethod, GaussMethodMixin, ElementaryTransformationsMixin):
         self._row += 1
         self._elements.append(row._elements[0])
     
+    @benchmark
+    def get_skeleton_decomposition(self):
+        triangle_matr, _ = self.get_triangle()
+        temp = []
+        rank_A = 0
+        for row in range(triangle_matr.row):
+            if not self._is_zeros(triangle_matr._elements[row]):
+                rank_A += 1
+                temp.extend(self._elements[row])
+        C = Matrix(rank_A, self.column, temp)
+        C_inv = C.get_pseudoinverse_matrix()
+        B = self * C_inv
+        return B, C
+    
     @property
     def T(self):
         temp = []
@@ -232,23 +249,40 @@ class Matrix(GrevilleMethod, GaussMethodMixin, ElementaryTransformationsMixin):
                     
 
 # rank 2
-test1 = (4,3,[1, -1, 0,
-              -1, 2, 1,
-              2, -3, -1,
-              0, 1, 1])
+test1 = (3,2,[2, 1,
+              1, 0,
+              1, 1,])
+
+test2 = (2, 3, [3, 2, 6,
+                0, 2, 2])
+
+test3 = (3, 3, [1, 2, 3, 
+                4, 5, 6,
+                5, 6, 6])
 
 
-test2 = (3, 4, [1, -1, 2, 0,
-                -1, 2, -3, 1, 
-                0, 1, -1, 1])
+m1 = Matrix(*test1)
 
-test3 = (2,3,[1, -1, 0,
-              -1, 2, 1]) 
+B, C = m1.get_skeleton_decomposition()
+
+print(B, end='\n\n')
+print(C, end='\n\n')
+print(B * C, end='\n\n')
+
+
+m1 = Matrix(*test2)
+
+B, C = m1.get_skeleton_decomposition()
+
+print(B, end='\n\n')
+print(C, end='\n\n')
+print(B * C, end='\n\n')
 
 m1 = Matrix(*test3)
 
-inv = m1.get_pseudoinverse_matrix()
+B, C = m1.get_skeleton_decomposition()
 
-print(inv)
-
+print(B, end='\n\n')
+print(C, end='\n\n')
+print(B * C, end='\n\n')
 
