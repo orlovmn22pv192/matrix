@@ -28,6 +28,20 @@ class ElementaryTransformationsMixin:
     def multiply_by_column(self, column:int, target) -> None:
         for i in range(self.row):
             self._elements[i][column] *= target
+            
+    def divide_by_num(self, target):
+        #target = Fraction(target)
+        if target == 0:
+            raise Exception('divison by zero')
+        for i in range(self.row):
+            for j in range(self.column):
+                self._elements[i][j] /= target
+        
+    def mul_by_num(self, target):
+        #target = Fraction(target)
+        for i in range(self.row):
+            for j in range(self.column):
+                self._elements[i][j] *= target
     
     def sum_rows(self, source_row:int, target_row:int) -> None:
         for i in range(self.column):
@@ -41,6 +55,12 @@ class ElementaryTransformationsMixin:
         for i in range(self.row):
             for j in range(self.column):
                 self._elements[i][j] += num
+    
+    def sub_num(self, num):
+        for i in range(self.row):
+            for j in range(self.column):
+                self._elements[i][j] -= num
+
 
 # Метод Гаусса
 class GaussMethodMixin:
@@ -135,7 +155,97 @@ class GrevilleMethod:
         return list_A[-1]
 
 
-class Matrix(GrevilleMethod, GaussMethodMixin, ElementaryTransformationsMixin):
+class EigenvalueEigenvectorMixin:
+    def power_method(self, epsilon=1e-6, max_iter=100):
+        """
+        return: Largest Eigenvalue and Eigenvector
+        """
+        tol = epsilon
+        max_iter = max_iter
+        x = Matrix(self.row,  1, [i + 1 for i in range(self.row)])
+        lam_prev = 0
+        
+        for i in range(max_iter): 
+            norm = (self * x).norm()
+            temp_x = self * x
+            temp_x.divide_by_num(norm)
+            x = temp_x
+        
+            lam = (x.T * self * x)._elements[0][0] / (x.T * x)._elements[0][0]
+        
+            if np.abs(lam - lam_prev) < tol: 
+                break
+        
+            lam_prev = lam
+        
+        return float(lam), x 
+    
+    def norm(self):
+        if self.column == 1 or self.row == 1:
+            norm = 0
+            for i in range(self.row):
+                for j in range(self.column):
+                    norm += self._elements[i][j] ** 2
+            return norm ** 0.5
+        return None
+    
+    def dot_sum(self, right):
+        if self.row == right.row and self.column == right.column:
+            temp = []
+            for i in range(self.row):
+                for j in range(self.column):
+                    temp.append(self._elements[i][j] * right._elements[i][j])
+            return sum(temp)
+        return None
+    
+    def set_column(self, vec, column):
+        for i in range(self.row):
+            self._elements[i][column] = vec._elements[i][0]
+
+    def qr_decomposition(self):
+        n = self.column
+        
+        Q = Matrix(self.row, self.column, [0 for _ in range(self.row*self.column)])
+        R = Matrix(self.row, self.column, [0 for _ in range(self.row*self.column)])
+
+        for i in range(n):
+            # Begin the Gram-Schmidt process
+            v = self.get_column(i, 1)
+            
+            for j in range(i):
+                q_col = Q.get_column(j, 1)
+                temp = q_col.dot_sum(self.get_column(i, 1))
+                R._elements[j][i] = temp
+                q_col.mul_by_num(temp)
+                v = v - q_col
+            
+            R._elements[i][i] = v.norm()
+            v.divide_by_num(R._elements[i][i])
+            Q.set_column(v, i)
+        
+        return Q, R
+
+    def qr_algorithm(self, max_iter):
+        q, r = self.qr_decomposition()
+        for _ in range(max_iter):
+            A_i = r * q
+            q, r = A_i.qr_decomposition()
+            
+        eigenvalues = [A_i._elements[i][i] for i in range(A_i.row)]
+        
+        
+        vectors = []
+        
+        for i in range(q.column):
+            e = Matrix(q.column, 1, [0 if i!=j else 1 for j in range(q.column)])
+            print(e)
+            vectors.append(q * e)
+        
+        return eigenvalues, vectors
+        
+    
+
+class Matrix(EigenvalueEigenvectorMixin, GrevilleMethod, GaussMethodMixin, ElementaryTransformationsMixin):
     def __init__(self, row:int, column:int, elements:list|None = None) -> None:
         self._row = row
         self._column = column
@@ -148,7 +258,7 @@ class Matrix(GrevilleMethod, GaussMethodMixin, ElementaryTransformationsMixin):
                     self._elements[i].append(elements[index])
                     index += 1
                     
-            self.to_fractions()
+            #self.to_fractions()
             
     @property
     def row(matrix) -> int:
@@ -189,6 +299,9 @@ class Matrix(GrevilleMethod, GaussMethodMixin, ElementaryTransformationsMixin):
                 for c in columns:
                     temp.append(self._elements[row][c])
         return Matrix(self.row, num_columns, temp)
+    
+    def get_row(self, row):
+        return Matrix(1, self.column, self._elements[row])
     
     def add_row(self, row):
         self._row += 1
@@ -248,8 +361,8 @@ class Matrix(GrevilleMethod, GaussMethodMixin, ElementaryTransformationsMixin):
         return '\n'.join(' | '.join(map(str, row)) for row in self._elements)  
                     
 
-# rank 2
-test1 = (3,2,[2, 1,
+
+"""test1 = (3,2,[2, 1,
               1, 0,
               1, 1,])
 
@@ -285,4 +398,15 @@ B, C = m1.get_skeleton_decomposition()
 print(B, end='\n\n')
 print(C, end='\n\n')
 print(B * C, end='\n\n')
+"""
 
+A = Matrix(2, 2, [5, -2,
+                  -2, 8
+                  ])
+
+
+
+
+vals, vecs = A.qr_algorithm(20)
+
+print(vals)
