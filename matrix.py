@@ -35,7 +35,7 @@ class ElementaryTransformationsMixin:
             raise Exception('divison by zero')
         for i in range(self.row):
             for j in range(self.column):
-                self._elements[i][j] /= target
+                self[i, j] = self[i, j] / target
         
     def mul_by_num(self, target):
         #target = Fraction(target)
@@ -181,13 +181,12 @@ class EigenvalueEigenvectorMixin:
         return float(lam), x 
     
     def norm(self):
-        if self.column == 1 or self.row == 1:
-            norm = 0
-            for i in range(self.row):
-                for j in range(self.column):
-                    norm += self._elements[i][j] ** 2
-            return norm ** 0.5
-        return None
+        norm = 0
+        for i in range(self.row):
+            for j in range(self.column):
+                norm += self._elements[i][j] ** 2
+        return norm ** 0.5
+
     
     def dot_sum(self, right):
         if self.row == right.row and self.column == right.column:
@@ -243,9 +242,82 @@ class EigenvalueEigenvectorMixin:
         
         return eigenvalues, vectors
         
-    
 
-class Matrix(EigenvalueEigenvectorMixin, GrevilleMethod, GaussMethodMixin, ElementaryTransformationsMixin):
+class SVDMixin:
+    @staticmethod
+    def F(X, a, b):
+        err = 0
+        for i in range(X.row):
+            for j in range(X.column):
+                err += (X[i, j] - b[i, 0] * a[j, 0]) ** 2
+        return err / 2
+    
+    def svd(self):
+        n = self.row
+        m = self.column
+
+        X = self.copy()
+        u = Matrix(m, 1, [random.randint(0,1) for i in range(m)])
+        v = Matrix(n, 1, [0]*n)
+
+        U = Matrix(m, 0)
+        V = Matrix(n, 0)
+        s = Matrix(n, m, [0] * (n*m))
+
+        u_list = []
+        v_list = []
+        s_list = []
+        last = 1
+        curr = 0
+
+        for _ in range(max(n,m)):
+            
+            u = Matrix(m, 1, [random.randint(1,1) for i in range(m)])
+            last = 1
+            curr = 0
+            
+            while (last-curr) > 0.0000001:
+                last = F(X, u, v)
+                
+                for i in range(n):
+                    sum_x_u = 0
+                    sum_u2 = 0
+                    for j in range(m):
+                        sum_x_u += X[i, j] * u[j, 0] 
+                        sum_u2 += u[j, 0] ** 2
+                    v[i, 0] = sum_x_u / sum_u2
+
+                for i in range(m):
+                    sum_x_v = 0
+                    sum_v2 = 0
+                    for j in range(n):
+                        sum_x_v += X[j, i] * v[j, 0] 
+                        sum_v2 +=  v[j, 0] ** 2
+                    u[i, 0] = sum_x_v / sum_v2
+                
+                curr = F(X, u, v)
+            
+            X = X - (v * u.T)
+            
+            s_list.append(u.norm() * v.norm())
+            u.divide_by_num(u.norm())
+            v.divide_by_num(v.norm())
+            u_list.append(u.copy())
+            v_list.append(v.copy())
+             
+        for i in range(m):
+            U.add_column(u_list[i])
+
+        for i in range(n):
+            V.add_column(v_list[i])
+
+        for i in range(min(n,m)):
+            s[i, i] = s_list[i]
+    
+        return U, s, V
+
+
+class Matrix(SVDMixin, EigenvalueEigenvectorMixin, GrevilleMethod, GaussMethodMixin, ElementaryTransformationsMixin):
     def __init__(self, row:int, column:int, elements:list|None = None) -> None:
         self._row = row
         self._column = column
@@ -307,6 +379,16 @@ class Matrix(EigenvalueEigenvectorMixin, GrevilleMethod, GaussMethodMixin, Eleme
         self._row += 1
         self._elements.append(row._elements[0])
     
+    def add_column(self, column):
+        self._column += 1
+        if not self._elements:
+            for i in range(self.row):
+                self._elements.append([])
+                self._elements[i].append(column[i, 0])
+            return
+        for i in range(self.row):
+            self._elements[i].append(column[i, 0])
+    
     @benchmark
     def get_skeleton_decomposition(self):
         triangle_matr, _ = self.get_triangle()
@@ -358,55 +440,41 @@ class Matrix(EigenvalueEigenvectorMixin, GrevilleMethod, GaussMethodMixin, Eleme
         return Matrix(self.row, self.column, temp)
     
     def __str__(self) -> str:
-        return '\n'.join(' | '.join(map(str, row)) for row in self._elements)  
+        for i in range(self.row):
+            for j in range(self.column):
+                self[i, j] = round(self[i, j], 3) 
+        return '\n'.join(' | '.join(map(str, row)) for row in self._elements) 
+    
+    def __getitem__(self, pos):
+        i, j = pos
+        return self._elements[i][j]
+    
+    def __setitem__(self, pos, v):
+        i, j = pos
+        self._elements[i][j] = v
                     
 
+n = 2
+m = 3
 
-"""test1 = (3,2,[2, 1,
-              1, 0,
-              1, 1,])
+X = Matrix(n, m, [2, -1, 0, 
+                4, 3, -2,])
 
-test2 = (2, 3, [3, 2, 6,
-                0, 2, 2])
+U, s, V = X.svd()
 
-test3 = (3, 3, [1, 2, 3, 
-                4, 5, 6,
-                5, 6, 6])
+print(U)
+print()
+print(V.T)
+print()
+print(s)
 
+print((U * s.get_pseudoinverse_matrix() * V.T))
 
-m1 = Matrix(*test1)
+matr = np.array([[2, -1, 0], 
+                [4, 3, -2],])
 
-B, C = m1.get_skeleton_decomposition()
+q,w,e = np.linalg.svd(matr)
 
-print(B, end='\n\n')
-print(C, end='\n\n')
-print(B * C, end='\n\n')
+print(q,w,e, sep='\n')
 
-
-m1 = Matrix(*test2)
-
-B, C = m1.get_skeleton_decomposition()
-
-print(B, end='\n\n')
-print(C, end='\n\n')
-print(B * C, end='\n\n')
-
-m1 = Matrix(*test3)
-
-B, C = m1.get_skeleton_decomposition()
-
-print(B, end='\n\n')
-print(C, end='\n\n')
-print(B * C, end='\n\n')
-"""
-
-A = Matrix(2, 2, [5, -2,
-                  -2, 8
-                  ])
-
-
-
-
-vals, vecs = A.qr_algorithm(20)
-
-print(vals)
+print(np.linalg.pinv(matr))
