@@ -277,7 +277,7 @@ class SVDMixin:
             curr = 0
             
             while (last-curr) > 0.0000001:
-                last = F(X, u, v)
+                last = SVDMixin.F(X, u, v)
                 
                 for i in range(n):
                     sum_x_u = 0
@@ -295,7 +295,7 @@ class SVDMixin:
                         sum_v2 +=  v[j, 0] ** 2
                     u[i, 0] = sum_x_v / sum_v2
                 
-                curr = F(X, u, v)
+                curr = SVDMixin.F(X, u, v)
             
             X = X - (v * u.T)
             
@@ -304,13 +304,17 @@ class SVDMixin:
             v.divide_by_num(v.norm())
             u_list.append(u.copy())
             v_list.append(v.copy())
-             
+        
+        
         for i in range(m):
             U.add_column(u_list[i])
 
         for i in range(n):
             V.add_column(v_list[i])
 
+        s_list = s_list[:min(n,m)]
+        s_list.sort()
+        
         for i in range(min(n,m)):
             s[i, i] = s_list[i]
     
@@ -478,3 +482,12 @@ q,w,e = np.linalg.svd(matr)
 print(q,w,e, sep='\n')
 
 print(np.linalg.pinv(matr))
+
+
+A = Matrix(3,3, [17, -2, -2,
+                 -2, 14, -4,
+                 -2, -4, 14])
+
+u, s, v = A.svd()
+
+print(s)
