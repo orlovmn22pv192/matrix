@@ -2,6 +2,8 @@ from fractions import Fraction
 import numpy as np
 import time
 import random
+import math
+import matplotlib.pyplot as plt
 
 
 def benchmark(func):
@@ -226,19 +228,19 @@ class EigenvalueEigenvectorMixin:
 
     def qr_algorithm(self, max_iter):
         q, r = self.qr_decomposition()
+        q_list = []
         for _ in range(max_iter):
+            q_list.append(q.copy())
             A_i = r * q
             q, r = A_i.qr_decomposition()
             
         eigenvalues = [A_i._elements[i][i] for i in range(A_i.row)]
         
         
-        vectors = []
+        vectors = q_list[0]
         
-        for i in range(q.column):
-            e = Matrix(q.column, 1, [0 if i!=j else 1 for j in range(q.column)])
-            print(e)
-            vectors.append(q * e)
+        for i in range(1, len(q_list)):
+            vectors = vectors * q_list[i]
         
         return eigenvalues, vectors
         
@@ -457,37 +459,39 @@ class Matrix(SVDMixin, EigenvalueEigenvectorMixin, GrevilleMethod, GaussMethodMi
         i, j = pos
         self._elements[i][j] = v
                     
+if __name__ == '__main__':
+    #Lab5
+    n = 2
+    m = 3
 
-n = 2
-m = 3
+    X = Matrix(n, m, [2, -1, 0, 
+                    4, 3, -2,])
 
-X = Matrix(n, m, [2, -1, 0, 
-                4, 3, -2,])
+    U, s, V = X.svd()
 
-U, s, V = X.svd()
+    print(U)
+    print()
+    print(V.T)
+    print()
+    print(s)
 
-print(U)
-print()
-print(V.T)
-print()
-print(s)
+    print((U * s.get_pseudoinverse_matrix() * V.T))
 
-print((U * s.get_pseudoinverse_matrix() * V.T))
+    matr = np.array([[2, -1, 0], 
+                    [4, 3, -2],])
 
-matr = np.array([[2, -1, 0], 
-                [4, 3, -2],])
+    q,w,e = np.linalg.svd(matr)
 
-q,w,e = np.linalg.svd(matr)
+    print(q,w,e, sep='\n')
 
-print(q,w,e, sep='\n')
-
-print(np.linalg.pinv(matr))
+    print(np.linalg.pinv(matr))
 
 
-A = Matrix(3,3, [17, -2, -2,
-                 -2, 14, -4,
-                 -2, -4, 14])
+    #Lab 6
+    A = Matrix(3,3, [17, -2, -2,
+                    -2, 14, -4,
+                    -2, -4, 14])
 
-u, s, v = A.svd()
-
-print(s)
+    v, vc = A.qr_algorithm(20)
+    print(v)
+    print(vc)
