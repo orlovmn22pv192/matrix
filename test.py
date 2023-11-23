@@ -141,7 +141,4 @@ for face in faces:
 
 ax.add_collection3d(Poly3DCollection(faces, facecolors='cyan', linewidths=1, edgecolors='k', alpha=.25))
 
-# plotting lines
-
-
 plt.show()
