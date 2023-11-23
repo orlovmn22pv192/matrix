@@ -6,48 +6,37 @@ import numpy as np
 #Lab 7
 
 class AffineTransformations:
-    def get_rotate_matrix_x(a):
+    def get_rotate_matrix_x(self, a):
         return Matrix(4, 4, [1, 0, 0, 0,
                              0, math.cos(a), -math.sin(a), 0,
                              0, math.sin(a), math.cos(a), 0,
                              0, 0, 0, 1])
     
-    def get_rotate_matrix_y(a):
+    def get_rotate_matrix_y(self, a):
         return Matrix(4, 4, [math.cos(a), 0, -math.sin(a), 0,
                              0, 1, 0, 0,
                              math.sin(a), 0, math.cos(a), 0,
                              0, 0, 0, 1])
         
-    def get_rotate_matrix_z(a):
+    def get_rotate_matrix_z(self, a):
         return Matrix(4, 4, [math.cos(a), math.sin(a), 0, 0,
                              -math.sin(a), math.cos(a), 0, 0,
                              0, 0, 1, 0,
                              0, 0, 0, 1])
     
-    def get_scale_matrix(k_x, k_y, k_z):
+    def get_scale_matrix(self, k_x, k_y, k_z):
         return Matrix(4, 4, [k_x, 0, 0, 0,
                              0, k_y, 0, 0,
                              0, 0, k_z, 0,
                              0, 0,   0, 1])
     
-    def get_transfer_matrix(x, y, z):
-        return Matrix(4, 4, [1, 0, 0, x,
-                             0, 1, 0, y,
-                             0, 0, 1, z,
-                             0, 0, 0, 1]) 
+    def get_transfer_matrix(self, x, y, z):
+        return Matrix(4, 4, [1, 0, 0, 0,
+                             0, 1, 0, 0,
+                             0, 0, 1, 0,
+                             x, y, z, 1]) 
         
 
-'''fig = plt.figure()
-ax = plt.axes(projection='3d')
-ax.set_xlabel('X')
-ax.set_ylabel('Y')
-ax.set_zlabel('Z')
-
-x = [0, 1, 1, 0, 0, 1, 1, 0, 0, 0, 0,   ]
-y = [0, 0, 1, 1, 1, 1, 0, 0, 0, 1, 1,  ]
-z = [0, 0, 0, 0, 1, 1, 1, 1, 0, 0, 1,  ]
-ax.plot(x,y,z, color='r')
-plt.show()'''
 
 import numpy as np
 from mpl_toolkits.mplot3d.art3d import Poly3DCollection
@@ -112,6 +101,44 @@ faces[4][:,2] = [0,0,1,1,0]
 faces[5][:,0] = [0,1,1,0,0]
 faces[5][:,1] = [1,1,1,1,1]
 faces[5][:,2] = [0,0,1,1,0]
+
+affine = AffineTransformations()
+
+rotate_x = affine.get_rotate_matrix_x(0)
+rotate_y = affine.get_rotate_matrix_y(45)
+rotate_z = affine.get_rotate_matrix_z(90)
+
+transfer_x = affine.get_transfer_matrix(0, 0, 0)
+transfer_y = affine.get_transfer_matrix(2, 0, 0)
+transfer_z = affine.get_transfer_matrix(2, 0, 0)
+
+scale_x = affine.get_scale_matrix(2,1,1)
+scale_y = affine.get_scale_matrix(1,1,1)
+scale_z = affine.get_scale_matrix(1,1,1)
+
+comands = {
+    '1': rotate_z,
+    '2': rotate_y,
+    '3': rotate_x,
+    '4': transfer_z,
+    '5': transfer_y,
+    '6': transfer_x,
+    '7': scale_z,
+    '8': scale_y,
+    '9': scale_x 
+}
+
+print("Input:", end=' ')
+
+inpt = input().split(' ')
+
+for face in faces:
+    for point in face:
+        vec = Matrix(1, 4, [*point, 1])
+        for comand in inpt: 
+            vec = vec * comands[comand]
+        np.put(point, range(len(point)), vec._elements[0])
+
 ax.add_collection3d(Poly3DCollection(faces, facecolors='cyan', linewidths=1, edgecolors='k', alpha=.25))
 
 # plotting lines
