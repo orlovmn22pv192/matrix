@@ -272,7 +272,7 @@ class SVDMixin:
         last = 1
         curr = 0
 
-        for _ in range(max(n,m)):
+        for _ in range(min(n,m)):
             
             u = Matrix(m, 1, [random.randint(1,1) for i in range(m)])
             last = 1
@@ -311,7 +311,7 @@ class SVDMixin:
         for i in range(m):
             U.add_column(u_list[i])
 
-        for i in range(n):
+        for i in range(min(m,n)):
             V.add_column(v_list[i])
 
         s_list = s_list[:min(n,m)]
@@ -460,38 +460,46 @@ class Matrix(SVDMixin, EigenvalueEigenvectorMixin, GrevilleMethod, GaussMethodMi
         self._elements[i][j] = v
                     
 if __name__ == '__main__':
-    #Lab5
-    n = 2
-    m = 3
+    X = Matrix(45, 5, [random.randint(1,5) for _ in range(45*5)])
+    
+    sum_col = [0] * 5
+    
+    for i in range(X.row):
+        for j in range(X.column):
+            sum_col[j] += X[i,j]
 
-    X = Matrix(n, m, [2, -1, 0, 
-                    4, 3, -2,])
-
-    U, s, V = X.svd()
-
-    print(U)
-    print()
-    print(V.T)
-    print()
-    print(s)
-
-    print((U * s.get_pseudoinverse_matrix() * V.T))
-
-    matr = np.array([[2, -1, 0], 
-                    [4, 3, -2],])
-
-    q,w,e = np.linalg.svd(matr)
-
-    print(q,w,e, sep='\n')
-
-    print(np.linalg.pinv(matr))
-
-
-    #Lab 6
-    A = Matrix(3,3, [17, -2, -2,
-                    -2, 14, -4,
-                    -2, -4, 14])
-
-    v, vc = A.qr_algorithm(20)
-    print(v)
-    print(vc)
+    for i in range(5):
+        sum_col[i] /= 45
+        
+    base_data = X.copy()
+        
+    for i in range(X.row):
+        for j in range(X.column):
+            X[i,j] -= sum_col[j] 
+    
+    class PCA:
+        def __init__(self, n_components=None):
+            self.n_components = n_components
+            self.P = None
+        
+        def fit(self, data:Matrix, n_components=None):
+            U, s, V = data.svd()
+            if n_components is None:
+                self.P = U.get_column(range(self.n_components), self.n_components)
+            else:
+                self.P = U.get_column(range(n_components), n_components)
+                
+        def transform(self, data:Matrix):
+            return data * self.P
+                
+    pca = PCA(2)
+    pca.fit(X)
+    T = pca.transform(X)
+    
+    x = [point[0] for point in T._elements]
+    y = [point[1] for point in T._elements]
+    
+    plt.figure(figsize=(10,10))
+    plt.scatter(x, y)
+    
+    plt.show()
