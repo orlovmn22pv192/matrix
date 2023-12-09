@@ -132,7 +132,6 @@ class GrevilleMethod:
                 if self._elements[i][j] != 0:
                     return False
         return True
-    
     def get_pseudoinverse_matrix(self):
         list_A = []
         k = 0
@@ -272,7 +271,7 @@ class SVDMixin:
         last = 1
         curr = 0
 
-        for _ in range(min(n,m)):
+        for _ in range(max(n,m)):
             
             u = Matrix(m, 1, [random.randint(1,1) for i in range(m)])
             last = 1
@@ -315,7 +314,7 @@ class SVDMixin:
             V.add_column(v_list[i])
 
         s_list = s_list[:min(n,m)]
-        s_list.sort()
+        s_list.sort(reverse=True)
         
         for i in range(min(n,m)):
             s[i, i] = s_list[i]
